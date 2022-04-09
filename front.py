@@ -52,6 +52,7 @@ rooms_json = """{
 
 rooms_dict = json.loads(rooms_json)
 
+
 class room_1(MDApp):
     def build(self):
         screen = Screen()
@@ -59,18 +60,27 @@ class room_1(MDApp):
             if rooms_dict["rooms"][0]["intervals"][i]["owner"] is None:
                 screen.add_widget(
                     OneLineListItem(
-                        text=rooms_dict["rooms"][0]["intervals"][i]["start"]+"-"+rooms_dict["rooms"][0]["intervals"][i]["end"],
-                        pos_hint={"center_x": 0.5, "center_y": 0.9 - 0.1*i},
-                        on_release=self.show_data_i(i), bg_color=(0, 1, 0, 1), text_color=(0, 0, 0, 1),  theme_text_color="Custom"
+                        text=rooms_dict["rooms"][0]["intervals"][i]["start"]
+                        + "-"
+                        + rooms_dict["rooms"][0]["intervals"][i]["end"],
+                        pos_hint={"center_x": 0.5, "center_y": 0.9 - 0.1 * i},
+                        on_release=self.show_data_i(i),
+                        bg_color=(0, 1, 0, 1),
+                        text_color=(0, 0, 0, 1),
+                        theme_text_color="Custom",
                     )
                 )
             else:
                 screen.add_widget(
                     OneLineListItem(
-                        text=rooms_dict["rooms"][0]["intervals"][i]["start"] + "-" +
-                             rooms_dict["rooms"][0]["intervals"][i]["end"],
-                        pos_hint={"center_x": 0.5, "center_y": 0.9 - 0.1*i},
-                        on_release=self.show_data_i(i), bg_color=(1, 0,  0, 1), text_color=(0, 0, 0, 1),  theme_text_color="Custom"
+                        text=rooms_dict["rooms"][0]["intervals"][i]["start"]
+                        + "-"
+                        + rooms_dict["rooms"][0]["intervals"][i]["end"],
+                        pos_hint={"center_x": 0.5, "center_y": 0.9 - 0.1 * i},
+                        on_release=self.show_data_i(i),
+                        bg_color=(1, 0, 0, 1),
+                        text_color=(0, 0, 0, 1),
+                        theme_text_color="Custom",
                     )
                 )
         return screen
@@ -79,14 +89,16 @@ class room_1(MDApp):
         def show_data(obj):
             close_button = MDFlatButton(text="close", on_release=self.close_dialog)
             book_button = MDFlatButton(text="book")
-            if obj.text_color == [0, 1, 0, 1]:
-                text = "СВОБОДНО, ПИДР"
+            owner_name = rooms_dict["rooms"][0]["intervals"][i]["owner"]
+            if owner_name is None:
+                text = "СВОБОДНО НАХУЙ"
             else:
-                owner_name = rooms_dict["rooms"][0]["intervals"][i]["owner"]
                 text = f"ЗАНЯТО существом по имени {owner_name}, СВАЛИ НАХУЙ"
-            self.dialog = MDDialog(title=obj.text, text=text,
-                              buttons=[close_button, book_button])
+            self.dialog = MDDialog(
+                title=obj.text, text=text, buttons=[close_button, book_button]
+            )
             self.dialog.open()
+
         return show_data
 
     def close_dialog(self, obj):
