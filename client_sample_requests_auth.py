@@ -1,20 +1,8 @@
-import requests
-import json
+import dateutil.parser
+from app_server import AppServer
 
 
-s = requests.Session()
-
-payload = {
-    'username': 'johndoe@e.mail',
-    'password': 'hunter2'
-}
-
-p = s.post('http://127.0.0.1:3000/auth/token', data=payload)
-print(p)
-
-content = json.loads(p.content.decode('utf8'))
-print(content)
-
-g = s.get('http://127.0.0.1:3000/protected', headers={'Authorization': 'Bearer {}'.format(content['access_token'])})
-
-print(g.content)
+aps = AppServer('127.0.0.1', 3000)
+aps.auth('johndoe@e.mail', 'hunter2')
+print(aps.attempt_book(dateutil.parser.isoparse('2022-04-10'), 'комната 1', 5))
+print(aps.attempt_unbook(dateutil.parser.isoparse('2022-04-10'), 'комната 1', 5))
