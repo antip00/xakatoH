@@ -18,6 +18,11 @@ class NotAuthorizedError(RuntimeError):
     pass
 
 
+class AttemptFailedError(RuntimeError):
+    def __init__(self, msg):
+        self.msg = msg
+
+
 def get_login_payload(login, password):
     return {
         'username': login,
@@ -83,10 +88,19 @@ class AppServer:
             "time_id": time_id
         }
 
-    def attempt_book(date, room, time_id):
+    def _attempt(self, endpoint, date, room, time_id):
         data = self._get_attempt_data(date, room, time_id)
-        return _authed_post(BOOK_ENDPOINT, data)
+
+        resp = _authed_post(endpoint, data)
+        resp_content = get_response_content(resp)
+
+        if resp_content['success']:
+            return
+
+        raise AttemptFailedError(resp_content['error_msg'])
+
+    def attempt_book(date, room, time_id):
+        self._attempt(BOOK_ENDPOINT, date, room, time_id)
 
     def attempt_unbook(date, room, time_id):
-        data = self._get_attempt_data(date, room, time_id)
-        return _authed_post(UNBOOK_ENDPOINT, data)
+        self._attempt(UNBOOK_ENDPOINT, date, room, time_id)
