@@ -54,22 +54,39 @@ class AppServer:
         self._login = login
         self._fill_auth_info(auth_content)
 
-    def _authed_get(self, endpoint, data=None):
+
+    def _authed_request(self, method, endpoint, data):
         if self._auth_headers is None:
             raise NotAuthorizedError()
 
-        return requests.get(self._url + endpoint,
-                            data=data,
-                            headers=self._auth_headers)
+        if data is not None:
+            data["user"] = self._login
+
+        return method(self._url + endpoint,
+                      data=data,
+                      headers=self._auth_headers)
+
+    def _authed_get(self, endpoint, data=None):
+        return self._authed_request(requests.get, endpoint, data)
 
     def _authed_post(self, endpoint, data=None):
-        if self._auth_headers is None:
-            raise NotAuthorizedError()
-
-        return requests.post(self._url + endpoint,
-                             data=data,
-                             headers=self._auth_headers)
+        return self._authed_request(requests.post, endpoint, data)
 
     def try_protected(self):
         p = self._authed_get('/protected')
         print(get_response_content(p))
+
+    def _get_attempt_data(self, date, room, time_id):
+        return {
+            "date": date.date().isoformat(),
+            "room": room,
+            "time_id": time_id
+        }
+
+    def attempt_book(date, room, time_id):
+        data = self._get_attempt_data(date, room, time_id)
+        return _authed_post(BOOK_ENDPOINT, data)
+
+    def attempt_unbook(date, room, time_id):
+        data = self._get_attempt_data(date, room, time_id)
+        return _authed_post(UNBOOK_ENDPOINT, data)
