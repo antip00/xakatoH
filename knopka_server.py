@@ -116,8 +116,8 @@ async def json_post(request: Request):
     slc = db[["room_name", "time_id", "user"]]
 
     # https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
-    cols = slc.columns.difference(['room_name'])
-    return (slc.groupby('room_name')[cols]
+    cols = slc.columns.difference(['time_id'])
+    return (slc.groupby('time_id')[cols]
             .apply(lambda x: x.to_dict('records'))
             .reset_index(name='data')
             .to_json(orient='records'))
@@ -125,3 +125,4 @@ async def json_post(request: Request):
 @app.on_event("shutdown")
 async def shutdown_event():
     db.to_pickle("db.pkl")
+
