@@ -8,6 +8,7 @@ AUTH_ENDPOINT = '/auth/token'
 BOOK_ENDPOINT = '/book'
 UNBOOK_ENDPOINT = '/unbook'
 NOTIFICATION_ENDPOINT = '/notify'
+JSON_ENDPOINT = '/json'
 
 
 class InvalidLoginError(RuntimeError):
@@ -33,6 +34,10 @@ def get_login_payload(login, password):
 
 def get_response_content(response):
     return json.loads(response.content.decode('utf8'))
+
+
+def get_date_isoformat(date):
+    return date.date().isoformat()
 
 
 class AppServer:
@@ -84,7 +89,7 @@ class AppServer:
 
     def _get_attempt_data(self, date, room, time_id):
         return {
-            "date": date.date().isoformat(),
+            "date": get_date_isoformat(date),
             "room_name": room,
             "time_id": time_id
         }
@@ -105,6 +110,14 @@ class AppServer:
 
     def attempt_unbook(self, date, room, time_id):
         self._attempt(UNBOOK_ENDPOINT, date, room, time_id)
+
+    def get_date_json(self, date):
+        data = {"date": get_date_isoformat(date)}
+
+        resp = self._authed_post(JSON_ENDPOINT, data)
+
+        return json.loads(get_response_content(resp))
+
 
     def get_notification(self):
         resp = self._authed_post(NOTIFICATION_ENDPOINT, {})
