@@ -160,6 +160,7 @@ async def notify_post(request: Request, user=Depends(manager)):
 @app.post("/json")
 async def json_post(request: Request, user=Depends(manager)):
     slc = db[["room_name", "time_id", "user"]]
+    slc = slc[db["date"] == "2022-04-10"]
 
     # https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
     cols = slc.columns.difference(['room_name'])
