@@ -1,3 +1,5 @@
+from datetime import datetime as dt
+from datetime import timedelta
 import json
 import pandas as pd
 import base64
@@ -18,15 +20,31 @@ app.add_middleware(
 
 @app.post("/knopka")
 async def knopka_post(request: Request):
+    time_stamp = dt.now()
+    rounded = time_stamp - (time_stamp - dt.min) % timedelta(minutes=30) + timedelta(hours=3)
+
     body = await request.json()
     body["data"] = json.loads(base64.b64decode(body["data"]).decode('utf8'))
-    print(body)
+    # print(body, request.headers)
 
-@app.get("/app")
-async def app_get(request: Request):
-    body = await request.json()
-    print(body)
-    return {"test": "mew"}
+    if body["data"]["telemetry"]["firstButton"]["status"] == "click":
+        room_name = "0"
+        date = time_stamp.strftime("%Y-%m-%d")
+        time_id = rounded.strftime("%H:%M")
+
+        print(room_name, date, time_id)
+        contains_room_name = db["room_name"].str.contains(room_name)
+        contains_date = db["date"].str.contains(date)
+        contains_time_id = db["time_id"].str.contains(time_id)
+
+        if not (contains_room_name.any() and \
+                contains_date.any() and \
+                contains_time_id.any()):
+            return
+
+        print(db)
+        db.loc[contains_room_name & contains_date & contains_time_id, "user"] = None
+        print(db)
 
 @app.post("/book")
 async def book_post(request: Request):
