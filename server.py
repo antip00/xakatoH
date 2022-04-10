@@ -32,7 +32,11 @@ def check_index(room_name, date, time_id):
     return contains_room_name.any() and contains_date.any() and contains_time_id.any(), \
                 contains_room_name & contains_date & contains_time_id
 
-fake_db = {'johndoe@e.mail': {'password': 'hunter2'}}
+# TODO store hash
+fake_db = {'evgeny': {'password': '1234'},
+           'marina': {'password': '1234'},
+           'egor': {'password': '1234'},
+           'andrey': {'password': '1234'}}
 
 
 @manager.user_loader()
