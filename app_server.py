@@ -7,6 +7,7 @@ SUCCESS_STATUS_CODE = 200
 AUTH_ENDPOINT = '/auth/token'
 BOOK_ENDPOINT = '/book'
 UNBOOK_ENDPOINT = '/unbook'
+NOTIFICATION_ENDPOINT = '/notify'
 
 
 class InvalidLoginError(RuntimeError):
@@ -68,7 +69,7 @@ class AppServer:
             data["user"] = self._login
 
         return method(self._url + endpoint,
-                      data=data,
+                      json=data,
                       headers=self._auth_headers)
 
     def _authed_get(self, endpoint, data=None):
@@ -84,14 +85,14 @@ class AppServer:
     def _get_attempt_data(self, date, room, time_id):
         return {
             "date": date.date().isoformat(),
-            "room": room,
+            "room_name": room,
             "time_id": time_id
         }
 
     def _attempt(self, endpoint, date, room, time_id):
         data = self._get_attempt_data(date, room, time_id)
 
-        resp = _authed_post(endpoint, data)
+        resp = self._authed_post(endpoint, data)
         resp_content = get_response_content(resp)
 
         if resp_content['success']:
@@ -99,8 +100,13 @@ class AppServer:
 
         raise AttemptFailedError(resp_content['error_msg'])
 
-    def attempt_book(date, room, time_id):
+    def attempt_book(self, date, room, time_id):
         self._attempt(BOOK_ENDPOINT, date, room, time_id)
 
-    def attempt_unbook(date, room, time_id):
+    def attempt_unbook(self, date, room, time_id):
         self._attempt(UNBOOK_ENDPOINT, date, room, time_id)
+
+    def get_notification(self):
+        resp = self._authed_post(NOTIFICATION_ENDPOINT, {})
+
+        return get_response_content(resp)['notification']
