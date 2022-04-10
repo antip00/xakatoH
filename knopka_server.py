@@ -18,51 +18,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def check_index(room_name, date, time_id):
+    contains_room_name = db["room_name"].str.contains(room_name)
+    contains_date = db["date"].str.contains(date)
+    contains_time_id = db["time_id"].str.contains(time_id)
+
+    return contains_room_name.any() and contains_date.any() and contains_time_id.any(), \
+                contains_room_name & contains_date & contains_time_id
+
 @app.post("/knopka")
 async def knopka_post(request: Request):
-    time_stamp = dt.now()
-    rounded = time_stamp - (time_stamp - dt.min) % timedelta(minutes=30) + timedelta(hours=3)
+    time_stamp = dt.now() + timedelta(hours=3)
+    rounded = time_stamp - (time_stamp - dt.min) % timedelta(minutes=30)
 
     body = await request.json()
     body["data"] = json.loads(base64.b64decode(body["data"]).decode('utf8'))
     # print(body, request.headers)
 
+    room_name = "0"
+    date = time_stamp.strftime("%Y-%m-%d")
+    time_id = rounded.strftime("%H:%M")
+
+    # print(db)
+    possible, index = check_index(room_name, date, time_id)
+
+    if not possible:
+        return
+
+    # Process buttons
     if body["data"]["telemetry"]["firstButton"]["status"] == "click":
-        room_name = "0"
-        date = time_stamp.strftime("%Y-%m-%d")
-        time_id = rounded.strftime("%H:%M")
+        db.loc[index, "user"] = None
+        db.loc[index, "service_col"] = None
+        db.loc[index, "service_time"] = None
 
-        print(room_name, date, time_id)
-        contains_room_name = db["room_name"].str.contains(room_name)
-        contains_date = db["date"].str.contains(date)
-        contains_time_id = db["time_id"].str.contains(time_id)
+    elif body["data"]["telemetry"]["firstButton"]["status"] == "long_press":
+        db.loc[index, "service_col"] = db.loc[index, "user"]
+        db.loc[index, "user"] = "Anon"
+        db.loc[index, "service_time"] = pd.to_datetime(time_stamp)
 
-        if not (contains_room_name.any() and \
-                contains_date.any() and \
-                contains_time_id.any()):
+    elif body["data"]["telemetry"]["firstButton"]["status"] == "double_click":
+        if (time_stamp - db.loc[index, "service_time"].dt.to_pydatetime()) > timedelta(minutes=5):
+            # print(db)
             return
 
-        print(db)
-        db.loc[contains_room_name & contains_date & contains_time_id, "user"] = None
-        print(db)
+        db.loc[index, "user"] = db.loc[index, "service_col"]
+        db.loc[index, "service_col"] = None
+        db.loc[index, "service_time"] = None
+    # print(db)
+
 
 @app.post("/book")
 async def book_post(request: Request):
     body = await request.json()
     print(type(body), body)
 
-    contains_room_name = db["room_name"].str.contains(body["room_name"])
-    contains_date = db["date"].str.contains(body["date"])
-    contains_time_id = db["time_id"].str.contains(body["time_id"])
+    possible, index = check_index(body["room_name"], body["date"], body["time_id"])
 
-    if not (contains_room_name.any() and \
-            contains_date.any() and \
-            contains_time_id.any()):
-
+    if not possible:
         return { "success": False, "error_msg": "Incorrect data entry" }
 
     # print(db)
-    db.loc[contains_room_name & contains_date & contains_time_id, "user"] = body["user"]
+    db.loc[index, "user"] = body["user"]
     # print((contains_room_name & contains_date & contains_time_id).any())
     # print(db)
     return { "success": True, "error_msg": "Successfully booked the room" }
@@ -70,22 +86,18 @@ async def book_post(request: Request):
 @app.post("/unbook")
 async def unbook_post(request: Request):
     body = await request.json()
-    print(type(body), body)
+    # print(type(body), body)
 
-    contains_room_name = db["room_name"].str.contains(body["room_name"])
-    contains_date = db["date"].str.contains(body["date"])
-    contains_time_id = db["time_id"].str.contains(body["time_id"])
+    possible, index = check_index(body["room_name"], body["date"], body["time_id"])
 
-    if not (contains_room_name.any() and \
-            contains_date.any() and \
-            contains_time_id.any()):
-
+    if not possible:
         return { "success": False, "error_msg": "Incorrect data entry" }
 
-    db.loc[contains_room_name & contains_date & contains_time_id, "user"] = None
+    db.loc[index, "user"] = None
     # print((contains_room_name & contains_date & contains_time_id).any())
     return { "success": True, "error_msg": "Successfully unbooked the room" }
 
 @app.on_event("shutdown")
 async def shutdown_event():
     db.to_pickle("db.pkl")
+
