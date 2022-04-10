@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 db = pd.read_pickle("db.pkl")
+notifications = dict()
 
 app = FastAPI()
 
@@ -52,6 +53,8 @@ async def knopka_post(request: Request):
         db.loc[index, "service_time"] = None
 
     elif body["data"]["telemetry"]["firstButton"]["status"] == "long_press":
+        notifications[db.loc[index, "user"][0]] = "WARNING! Your room is contested. You are to loose access in 5 minutes"
+
         db.loc[index, "service_col"] = db.loc[index, "user"]
         db.loc[index, "user"] = "Anon"
         db.loc[index, "service_time"] = pd.to_datetime(time_stamp)
@@ -65,7 +68,6 @@ async def knopka_post(request: Request):
         db.loc[index, "service_col"] = None
         db.loc[index, "service_time"] = None
     # print(db)
-
 
 @app.post("/book")
 async def book_post(request: Request):
@@ -97,7 +99,29 @@ async def unbook_post(request: Request):
     # print((contains_room_name & contains_date & contains_time_id).any())
     return { "success": True, "error_msg": "Successfully unbooked the room" }
 
+@app.post("/notify")
+async def notify_post(request: Request):
+    name = (await request.json())["user"]
+
+    if not name in notifications:
+        return {"notification": None}
+    
+    ret = {"notification": notifications[name]}
+    del notifications[name]
+
+    return ret
+
+@app.post("/json")
+async def json_post(request: Request):
+    slc = db[["room_name", "time_id", "user"]]
+
+    # https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
+    cols = slc.columns.difference(['room_name'])
+    return (slc.groupby('room_name')[cols]
+            .apply(lambda x: x.to_dict('records'))
+            .reset_index(name='data')
+            .to_json(orient='records'))
+
 @app.on_event("shutdown")
 async def shutdown_event():
     db.to_pickle("db.pkl")
-
