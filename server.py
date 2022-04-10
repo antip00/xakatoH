@@ -11,6 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_login.exceptions import InvalidCredentialsException
 
 db = pd.read_pickle("db.pkl")
+notifications = dict()
 
 SECRET = 'тигры арр'
 manager = LoginManager(SECRET, token_url='/auth/token')
@@ -94,6 +95,8 @@ async def knopka_post(request: Request):
         db.loc[index, "service_time"] = None
 
     elif body["data"]["telemetry"]["firstButton"]["status"] == "long_press":
+        notifications[db.loc[index, "user"][0]] = "WARNING! Your room is contested. You are to loose access in 5 minutes"
+
         db.loc[index, "service_col"] = db.loc[index, "user"]
         db.loc[index, "user"] = "Anon"
         db.loc[index, "service_time"] = pd.to_datetime(time_stamp)
@@ -142,10 +145,28 @@ async def unbook_post(request: Request, user=Depends(manager)):
 
 
 @app.post("/notify")
-async def is_notification(request: Request, user=Depends(manager)):
-    body = await request.json()
+async def notify_post(request: Request, user=Depends(manager)):
+    name = (await request.json())["user"]
 
-    return {"notification": "Notification text"}
+    if not name in notifications:
+        return {"notification": None}
+
+    ret = {"notification": notifications[name]}
+    del notifications[name]
+
+    return ret
+
+
+@app.post("/json")
+async def json_post(request: Request, user=Depends(manager)):
+    slc = db[["room_name", "time_id", "user"]]
+
+    # https://stackoverflow.com/questions/55004985/convert-pandas-dataframe-to-json-with-columns-as-key
+    cols = slc.columns.difference(['room_name'])
+    return (slc.groupby('room_name')[cols]
+            .apply(lambda x: x.to_dict('records'))
+            .reset_index(name='data')
+            .to_json(orient='records'))
 
 
 @app.on_event("shutdown")
